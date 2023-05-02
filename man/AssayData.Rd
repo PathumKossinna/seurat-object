@@ -10,29 +10,36 @@
 \alias{SetAssayData.Assay}
 \title{Get and Set Assay Data}
 \usage{
-GetAssayData(object, slot, ...)
+GetAssayData(object, ...)
 
 SetAssayData(object, slot, new.data, ...)
 
-\method{GetAssayData}{Seurat}(object, slot = "data", assay = NULL, ...)
+\method{GetAssayData}{Seurat}(object, assay = NULL, layer = NULL, slot = deprecated(), ...)
 
 \method{SetAssayData}{Seurat}(object, slot = "data", new.data, assay = NULL, ...)
 
-\method{GetAssayData}{Assay}(object, slot = c("data", "scale.data", "counts"), ...)
+\method{GetAssayData}{Assay}(
+  object,
+  layer = c("data", "scale.data", "counts"),
+  slot = deprecated(),
+  ...
+)
 
 \method{SetAssayData}{Assay}(object, slot = c("data", "scale.data", "counts"), new.data, ...)
 }
 \arguments{
 \item{object}{An object}
 
-\item{slot}{Specific assay data to get or set}
-
 \item{...}{Arguments passed to other methods}
+
+\item{slot}{\Sexpr[stage=build,results=rd]{lifecycle::badge("deprecated")} Specific assay data to get or set}
 
 \item{new.data}{New assay data to add}
 
 \item{assay}{Specific assay to get data from or set data for; defaults to
 the \link[SeuratObject:DefaultAssay]{default assay}}
+
+\item{layer}{Name of layer to get or set}
 }
 \value{
 \code{GetAssayData}: returns the specified assay data
@@ -46,6 +53,18 @@ expression matrices (eg. \dQuote{counts}, \dQuote{data}, or
 \dQuote{scale.data}). \code{SetAssayData} can be used to replace one of these
 expression matrices
 }
+\section{Lifecycle}{
+
+
+\Sexpr[stage=build,results=rd]{lifecycle::badge("superseded")}
+
+
+
+\code{GetAssayData} and \code{SetAssayData} have been superseded. To fetch
+expression matrices, use \code{\link{LayerData}}; to set expression data,
+use \code{\link{LayerData<-}}
+}
+
 \examples{
 # Get assay data from the default assay in a Seurat object
 GetAssayData(object = pbmc_small, slot = "data")[1:5,1:5]
@@ -61,7 +80,7 @@ new.seurat.object <- SetAssayData(
 )
 
 # Get the data directly from an Assay object
-GetAssayData(pbmc_small[["RNA"]], slot = "data")[1:5,1:5]
+GetAssayData(pbmc_small[["RNA"]], layer = "data")[1:5,1:5]
 
 # Set an Assay slot directly
 count.data <- GetAssayData(pbmc_small[["RNA"]], slot = "counts")

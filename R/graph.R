@@ -24,7 +24,7 @@ Graph <- setClass(
   Class = 'Graph',
   contains = "dgCMatrix",
   slots = list(
-    assay.used = 'OptionalCharacter'
+    assay.used = 'character'
   )
 )
 
@@ -102,13 +102,31 @@ as.Graph.Neighbor <- function(x, weighted = TRUE, ...) {
   return(graph)
 }
 
+#' @method Cells Graph
+#' @export
+#'
+Cells.Graph <- function(x, margin = 1L, ...) {
+  margin <- as.integer(x = margin)
+  if (is_na(x = margin)) {
+    return(Reduce(f = union, x = dimnames(x = x)))
+  }
+  if (!isTRUE(margin %in% c(1L, 2L))) {
+    stop("'margin' must be either 1 or 2", call. = FALSE)
+  }
+  return(dimnames(x = x)[[margin]])
+}
+
 #' @rdname DefaultAssay
 #' @export
 #' @method DefaultAssay Graph
 #'
 DefaultAssay.Graph <- function(object, ...) {
-  object <- UpdateSlots(object = object)
-  return(slot(object = object, name = 'assay.used'))
+  # object <- UpdateSlots(object = object)
+  assay <- slot(object = object, name = 'assay.used')
+  if (!length(x = assay)) {
+    assay <- NULL
+  }
+  return(assay)
 }
 
 #' @rdname DefaultAssay
@@ -116,8 +134,15 @@ DefaultAssay.Graph <- function(object, ...) {
 #' @method DefaultAssay<- Graph
 #'
 "DefaultAssay<-.Graph" <- function(object, ..., value) {
-  object <- UpdateSlots(object = object)
+  op <- options(Seurat.object.validate = FALSE)
+  on.exit(expr = options(op))
+  object <- suppressWarnings(expr = UpdateSlots(object = object))
+  if (!length(x = value) || !isTRUE(x = nzchar(x = value))) {
+    value <- character(length = 0L)
+  }
   slot(object = object, name = 'assay.used') <- value
+  options(op)
+  validObject(object = object)
   return(object)
 }
 
@@ -128,6 +153,61 @@ DefaultAssay.Graph <- function(object, ...) {
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 # S4 methods
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+setValidity(
+  Class = 'Graph',
+  method = function(object) {
+    if (isFALSE(x = getOption(x = "Seurat.object.validate", default = TRUE))) {
+      warn(
+        message = paste("Not validating", class(x = object)[1L], "objects"),
+        class = 'validationWarning'
+      )
+      return(TRUE)
+    }
+    valid <- NULL
+    # Check dimnames
+    dnames <- dimnames(x = object)
+    for (i in seq_along(along.with = dnames)) {
+      type <- c('row', 'column')[i]
+      if (is.null(x = dnames[[i]])) {
+        valid <- c(valid, paste(type, "names must be provided"))
+      } else if (any(!nzchar(x = dnames[[i]]))) {
+        valid <- c(valid, paste(type, "names must not be empty strings"))
+      } else if (anyDuplicated(x = dnames[[i]])) {
+        valid <- c(valid, paste(type, "names may not contain duplicates"))
+      }
+    }
+    # Check default assay
+    assay <- DefaultAssay(object = object)
+    if (length(x = assay) && !nzchar(x = assay)) {
+      valid <- c(valid, "'assay.used' may not be an empty character ('')")
+    }
+    return(valid %||% TRUE)
+  }
+)
+
+
+#' @describeIn Graph-methods Overview of a \code{Graph} object
+#'
+#' @return \code{show}: Prints summary to \code{\link[base]{stdout}} and
+#' invisibly returns \code{NULL}
+#'
+#' @importFrom methods show
+#'
+#' @export
+#'
+setMethod(
+  f = 'show',
+  signature = 'Graph',
+  definition = function(object) {
+    cat(
+      "A Graph object containing ",
+      nrow(x = object),
+      "cells"
+    )
+  }
+)
+
 
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 # Internal
